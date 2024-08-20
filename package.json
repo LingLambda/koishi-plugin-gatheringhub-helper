@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-gatheringhub-helper",
   "description": "怪物猎人集会码助手",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "contributors": [
@@ -19,6 +19,7 @@
     "mh",
     "monsterhunter",
     "怪物猎人",
+    "怪猎",
     "集会码",
     "助手"
   ],
