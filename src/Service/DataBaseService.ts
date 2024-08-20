@@ -1,9 +1,7 @@
 import { Context } from 'koishi'
 import { $ } from 'koishi'
 
-
-
-  //习惯原因把增删改都加了事务不知道会有什么后果
+  //习惯把增删改都加了事务不知道会有什么后果
  export class DataBaseService{
 
   /**
@@ -25,6 +23,7 @@ import { $ } from 'koishi'
        throw new Error('Unable to fetch data');
      }
    }
+
   /**
    * 添加集会码
    * @param ctx 
@@ -93,6 +92,7 @@ import { $ } from 'koishi'
         hub_no:$.add(row.hub_no,num)
       }))
   }
+  
   /**
    * 初始化数据表
    * @param ctx 

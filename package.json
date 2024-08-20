@@ -15,7 +15,12 @@
   "keywords": [
     "chatbot",
     "koishi",
-    "plugin"
+    "plugin",
+    "mh",
+    "monsterhunter",
+    "怪物猎人",
+    "集会码",
+    "助手"
   ],
   "peerDependencies": {
     "koishi": "^4.0.0"
