@@ -76,9 +76,13 @@ async function jhmService(argv:any,ctx:Context,config:Config, massage: string,no
     //群号
     const groupId=argv.session.onebot.group_id;
     //发送者id
-    const userId=argv.session.onebot.user_id;
-    //发送者身份 owner 或 admin 或 member
-    const userRole=config.justAdmin?argv.session.onebot.sender.role:"owner"
+    const userId=argv.session.onebot.user_id.toString();
+    //发送者身份 owner 或 admin 或 member,如果在白名单则无视权限
+    var userRole=config.justAdmin?argv.session.onebot.sender.role:"owner"
+    if(config.otherUser.includes(userId)){
+        userRole="owner"
+    }
+    
     //是否为群聊
     const isGroup=argv.session.onebot.message_type=='group'?true:false;
 
