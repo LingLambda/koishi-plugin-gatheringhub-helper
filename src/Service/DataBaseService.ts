@@ -23,6 +23,25 @@ import { $ } from 'koishi'
        throw new Error('Unable to fetch data');
      }
    }
+   
+   /**
+    * 根据编号查询集会码信息
+    * @param ctx 
+    * @param hubNo 编号
+    * @param groupId 群号
+    * @returns 数据表数组
+    */
+   async showInfoByNo(ctx:Context, hubNo: number, groupId: string ){
+    try {
+      return await ctx.database
+        .select('gatheringhub')
+        .where(row => $.eq(row.hub_no, hubNo)&&$.eq(row.group_id, groupId))
+        .execute();
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        throw new Error('Unable to fetch data');
+      }
+   }
 
   /**
    * 添加集会码
@@ -92,7 +111,7 @@ import { $ } from 'koishi'
         hub_no:$.add(row.hub_no,num)
       }))
   }
-  
+
   /**
    * 初始化数据表
    * @param ctx 

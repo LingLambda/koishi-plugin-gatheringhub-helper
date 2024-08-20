@@ -61,6 +61,7 @@ export function apply(ctx: Context , config: Config) {
     ctx.command('jhm <massage:string> <note:text>','怪物猎人集会码助手')
     .option('add', '-a 添加新的集会码')
     .option('remove', '-r 删除指定编号的集会码')
+    .option('select', '-s 查询指定编号集会码的添加者和时间')
     .action((argv,massage,note) =>jhmService(argv,ctx,config,massage,note))
     .example('jhm -a 114514191981 冥赤龙 将 114514191981 添加到集会码列表中设置备注为冥赤龙')
     .example('jhm -r 1 将编号为1的集会码删除')
@@ -101,6 +102,12 @@ async function jhmService(argv:any,ctx:Context,config:Config, massage: string,no
         }
         return await jhmRemove(ctx,massage,groupId);
     }
+    else if(argv.options.select){
+        if(userRole=="member"){
+            return '非管理无法操作喵';
+        }
+        return await jhmSelect(ctx,massage,groupId);
+    }
     return await jhmShowAll(ctx,groupId);
 }
 
@@ -122,6 +129,34 @@ async function jhmShowAll(ctx:Context, groupId:string){
 
 }
 
+/**
+ * 返回本群指定编号的集会码添加信息
+ * @param ctx 
+ * @param groupId 
+ * @returns 
+ */
+async function jhmSelect(ctx:Context,massage:string ,groupId:string){
+    const hubNo=parseInt(massage)
+    const gatheringhubArray=await dbs.showInfoByNo(ctx,hubNo,groupId)
+    let gatheringhubList:string="编号     添加者id        添加时间\n"
+    gatheringhubArray.forEach(element => {
+        gatheringhubList+=(
+            element.hub_no+"    "+
+            element.user_id+"    "+
+            element.add_date.toLocaleString('zh-CN', {
+                month: 'long',   // 全称月份
+                day: 'numeric',  // 数字日期
+                hour: 'numeric', // 小时
+                minute: 'numeric', // 分钟
+                second: 'numeric', // 秒
+                hour12: false    // 24小时制
+            })+"\n"          
+        )
+    });
+    return gatheringhubList
+}
+
+
 async function jhmAdd(ctx:Context,massage:string,note:string,userId:string,groupId:string,hubNo:number){
     if(!note){
         note="无"
@@ -132,6 +167,7 @@ async function jhmAdd(ctx:Context,massage:string,note:string,userId:string,group
 }
 
 async function jhmRemove(ctx: Context, massage: string, groupId: string) {
-    const hubNo = parseInt(massage, 10)
+    const hubNo = parseInt(massage)
     return dbs.removeInfoByNo(ctx, hubNo, groupId);
 }
+
