@@ -1,6 +1,6 @@
 import {  Context, Schema } from 'koishi'
 import { DataBaseService } from './Service/DataBaseService'
-
+import {} from 'koishi-plugin-cron'
 export const name = 'gatheringhub-helper'
 export const usage =`
 此插件旨在帮助怪猎群友快速发布获取群集会码  
@@ -18,7 +18,8 @@ export const usage =`
   输入 'jhm -s 1' 查看编号为 1 的集会码的添加记录。  
 `
 export const inject = {
-  required: ['database']
+  required: ['database'],
+  optional: ['cron']
 }
 
 export interface Config {
@@ -57,10 +58,21 @@ export interface Gatheringhub {
     user_id: string//添加人id
     note: string//备注
 }
+declare module 'koishi' {
+    interface Events {
+        // 方法名称对应自定义事件的名称
+        // 方法签名对应事件的回调函数签名
+        'gatheringhub-helper/timer-broad-event'(groupId : string,massage: string): void
+    }
+}
+
 //定义操作数据库对象
 const dbs=new DataBaseService();
 export function apply(ctx: Context , config: Config) {
     dbs.dbInit(ctx);
+    //ctx.cron(`0 * * * *`, async () => {
+    //    ctx.emit('gatheringhub-helper/timer-broad-event' ,//TODO:群号,发送的消息 )
+    //  })
     ctx.command('jhm <massage:string> <note:text>','怪物猎人集会码助手')
     .option('add', '-a 添加新的集会码')
     .option('remove', '-r 删除指定编号的集会码')
