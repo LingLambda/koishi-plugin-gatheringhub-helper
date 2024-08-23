@@ -89,12 +89,12 @@ const dbs=new DataBaseService();
 export function apply(ctx: Context , config: Config) {
     dbs.dbInit(ctx);
     if (ctx.cron&&config.hoursBroad){
-    ctx.cron(`0 * * * *`, async () => {
+    ctx.cron(`* * * * *`, async () => {
        ctx.emit('gatheringhub-helper/timer-broad-event' ,config.broadGroupId )
      })
      ctx.on('gatheringhub-helper/timer-broad-event', async (groupIdArray: Array<string>) => {
         groupIdArray.forEach(async (gruopId) => {
-            await (ctx.bots[`onebot:${config.botId}`] as OneBotBot<Context>).internal.sendGroupMsg(gruopId,`${await jhmShowAll(ctx,gruopId)}`)
+            await (ctx.bots[`onebot:${config.botId}`] as OneBotBot<Context>).internal.sendGroupMsg(gruopId,`${(await jhmShowAll(ctx,gruopId)).trim()}`)
         })
       })
     }
