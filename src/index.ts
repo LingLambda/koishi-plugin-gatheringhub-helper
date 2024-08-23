@@ -89,7 +89,7 @@ const dbs=new DataBaseService();
 export function apply(ctx: Context , config: Config) {
     dbs.dbInit(ctx);
     if (ctx.cron&&config.hoursBroad){
-    ctx.cron(`* * * * *`, async () => {
+    ctx.cron(`0 * * * *`, async () => {
        ctx.emit('gatheringhub-helper/timer-broad-event' ,config.broadGroupId )
      })
      ctx.on('gatheringhub-helper/timer-broad-event', async (groupIdArray: Array<string>) => {
