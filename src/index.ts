@@ -1,9 +1,11 @@
 import {  Context, Schema } from 'koishi'
 import { DataBaseService } from './Service/DataBaseService'
+import type {OneBotBot} from 'koishi-plugin-adapter-onebot'
 import {} from 'koishi-plugin-cron'
 export const name = 'gatheringhub-helper'
 export const usage =`
 此插件旨在帮助怪猎群友快速发布获取群集会码  
+<small>暂仅支持onebot适配器</small>  
 ## 使用例
 - **查询集会码**  
   输入 'jhm' 即可查询本群的所有集会码。
@@ -15,7 +17,8 @@ export const usage =`
   输入 'jhm -d 1' 删除编号为 1 的集会码  
   
 - **集会码记录**  
-  输入 'jhm -s 1' 查看编号为 1 的集会码的添加记录。  
+  输入 'jhm -s 1' 查看编号为 1 的集会码的添加记录。 
+
 `
 export const inject = {
   required: ['database'],
@@ -23,12 +26,17 @@ export const inject = {
 }
 
 export interface Config {
+    botId: number
     justAdmin: boolean
     otherUser:Array<string>
+    hoursBroad:boolean
+    broadGroupId:Array<string>
 }
 
 export const Config= Schema.intersect([
-
+    Schema.object({
+        botId: Schema.number().required().description('机器人的QQ号'),
+    }),
     Schema.object({
         justAdmin: Schema.boolean().default(false).description('仅允许管理员群主发布删除群集会码'),
     }),
@@ -38,6 +46,16 @@ export const Config= Schema.intersect([
             otherUser: Schema.array(String).description("管理员以外可以操作的qqid").default(['3283467223'])
         }),
         Schema.object({}),
+    ]),
+    Schema.object({
+        hoursBroad:Schema.boolean().default(false).description('每小时自动播报一次')
+    }),
+    Schema.union([
+        Schema.object({
+            hoursBroad: Schema.const(true).required(),
+            broadGroupId: Schema.array(String).description('播报群号').default(['317701038'])
+        }),
+        Schema.object({})
     ])
 ])
 
@@ -62,7 +80,7 @@ declare module 'koishi' {
     interface Events {
         // 方法名称对应自定义事件的名称
         // 方法签名对应事件的回调函数签名
-        'gatheringhub-helper/timer-broad-event'(groupId : string,massage: string): void
+        'gatheringhub-helper/timer-broad-event'(groupIdArray : Array<string>): void
     }
 }
 
@@ -70,9 +88,16 @@ declare module 'koishi' {
 const dbs=new DataBaseService();
 export function apply(ctx: Context , config: Config) {
     dbs.dbInit(ctx);
-    //ctx.cron(`0 * * * *`, async () => {
-    //    ctx.emit('gatheringhub-helper/timer-broad-event' ,//TODO:群号,发送的消息 )
-    //  })
+    if (ctx.cron&&config.hoursBroad){
+    ctx.cron(`* * * * *`, async () => {
+       ctx.emit('gatheringhub-helper/timer-broad-event' ,config.broadGroupId )
+     })
+     ctx.on('gatheringhub-helper/timer-broad-event', async (groupIdArray: Array<string>) => {
+        groupIdArray.forEach(async (gruopId) => {
+            await (ctx.bots[`onebot:${config.botId}`] as OneBotBot<Context>).internal.sendGroupMsg(gruopId,`${await jhmShowAll(ctx,gruopId)}`)
+        })
+      })
+    }
     ctx.command('jhm <massage:string> <note:text>','怪物猎人集会码助手')
     .option('add', '-a 添加新的集会码')
     .option('remove', '-r 删除指定编号的集会码')
@@ -80,6 +105,8 @@ export function apply(ctx: Context , config: Config) {
     .action((argv,massage,note) =>jhmService(argv,ctx,config,massage,note))
     .example('jhm -a 114514191981 冥赤龙 将 114514191981 添加到集会码列表中设置备注为冥赤龙')
     .example('jhm -r 1 将编号为1的集会码删除')
+
+
 }
 
 async function jhmService(argv:any,ctx:Context,config:Config, massage: string,note:string){
