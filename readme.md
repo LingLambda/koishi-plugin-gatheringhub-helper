@@ -33,7 +33,7 @@
 目前，本插件仅支持 [**onebot**](https://github.com/koishijs/koishi-plugin-adapter-onebot) 适配器。
 
 ## 其他 
-如果有问题欢迎提出[Issue](https://github.com/intling-luo/koishi-plugin-gatheringhub-helper/issues)  
+如果有问题欢迎提出[Issue](https://github.com/LingLambda/koishi-plugin-gatheringhub-helper/issues)  
 不管有没有问题都欢迎通过abc1514671906@163.com联系我
 
 ## License

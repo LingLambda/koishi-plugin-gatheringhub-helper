@@ -111,6 +111,45 @@ import { $ } from 'koishi'
         hub_no:$.add(row.hub_no,num)
       }))
   }
+  /**
+   * 删除某群的某个群公告
+   * @param ctx 
+   * @param noticeId 公告id
+   * @param groupId 群号
+   */
+  async delNoticeByNoticeId(ctx:Context,noticeId:string,groupId:string){
+    await ctx.database.remove('gatheringhub_notice',{
+      notice_id:noticeId,
+      group_id:groupId
+    })
+  }
+  /**
+   * 查询某群所有由本bot发送的所有公告
+   * @param ctx 
+   * @param groupId 群号
+   * @returns gatheringhubNotice类型数组
+   */
+  async showNoticeByGroupId(ctx:Context,groupId:string){
+    return await ctx.database.get('gatheringhub_notice',
+      {
+        group_id: [groupId]
+      })
+  }
+  /**
+   * 存储bot发送时的公告信息
+   * @param ctx 
+   * @param groupId 
+   * @param noticeId 
+   */
+  async insertNoticeByGroupId(ctx:Context,groupId:string,noticeId:string){
+    await ctx.database.create('gatheringhub_notice',
+      {
+        notice_id: noticeId,//公告id
+        group_id: groupId,//群号
+        add_date: new Date(),//添加时间
+      })
+  }
+
 
   /**
    * 初始化数据表
@@ -132,6 +171,19 @@ import { $ } from 'koishi'
         primary:'hub_id',//设置主键
         autoInc:true,//主键自增
         //unique: ['hub_no'],//不可重复约束
+      }
+    )
+    //这个表用来存储由bot发送的公告,不需要内容,方便后续删除更新
+    ctx.model.extend('gatheringhub_notice',
+      {
+        hub_notice_id: 'unsigned',//自增主键
+        notice_id: 'string',//公告id
+        group_id: 'string',//群号
+        add_date: 'timestamp',//添加时间
+      },
+      {
+        primary:'hub_notice_id',//设置主键
+        autoInc:true,//主键自增
       }
     )
   }

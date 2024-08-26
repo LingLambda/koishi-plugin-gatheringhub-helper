@@ -11,6 +11,10 @@
     "lib",
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LingLambda/koishi-plugin-gatheringhub-helper.git"
+  },
   "license": "MIT",
   "keywords": [
     "chatbot",
