@@ -4,28 +4,30 @@ import * as path from 'path';
 
 export class FileService {
     private FileUrl = 'noticeTemplate/template1.txt';
-    private nowDate = new Date().toLocaleString('zh-CN', {
-        month: 'long',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: 'numeric',
-        hour12: false,
-        weekday: 'long'
-    });
     private replacements = {
-        date: this.nowDate,
-        hubInfo: ''
+        date:'',
+        hubInfo:''
     }
     private targetDir: string; // 目标目录
     private ctx: Context;
     async init(hubInfo: any[], ctx: Context) {
+        let nowDate = new Date().toLocaleString('zh-CN', {
+            month: 'long',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: 'numeric',
+            hour12: false,
+            weekday: 'long'
+        });
         this.ctx = ctx;
+        this.targetDir = path.join(this.ctx.baseDir, 'data/gatheringhub/noticeTemplate');
+        this.replacements.date=nowDate;
+        this.replacements.hubInfo='';
         hubInfo.forEach((hub: any) => {
             this.replacements.hubInfo += (
                 "· " + hub.note + ":  " + hub.hub_name + "\n"
             );
         });
-        this.targetDir = path.join(this.ctx.baseDir, 'data/gatheringhub/noticeTemplate');
     }
     /**
      * 检查目标目录，如果目标目录不存在，则创建目标目录，并复制模板文件到目标目录
@@ -57,23 +59,20 @@ export class FileService {
      * 读取模板文件
      * @returns 
      */
-    replacePlaceholders(): Promise<string> {
-        return new Promise((resolve, reject) => {
-            const destinationFilePath = path.join(this.targetDir, path.basename(this.FileUrl)); // 获取目标文件路径
-            fs.readFile(destinationFilePath, 'utf-8', (err, data) => {
-                if (err) {
-                    console.error(`读取公告模板文件失败: ${err}`);
-                    reject(err);
-                    return;
-                }
-                // 替换占位符
-                let result = data;
-                for (const [placeholder, value] of Object.entries(this.replacements)) {
-                    const regex = new RegExp(`{{${placeholder}}}`, 'g');
-                    result = result.replace(regex, value);
-                }
-                resolve(result);
-            });
-        });
+    async replacePlaceholders(): Promise<string> {
+        const destinationFilePath = path.join(this.targetDir, path.basename(this.FileUrl)); // 获取目标文件路径
+        try {
+            const data = await fs.promises.readFile(destinationFilePath, 'utf-8');
+            // 替换占位符
+            let result = data;
+            for (const [placeholder, value] of Object.entries(this.replacements)) {
+                const regex = new RegExp(`{{${placeholder}}}`, 'g');
+                result = result.replace(regex, value);
+            }
+            return result;
+        } catch (err) {
+            console.error(`读取公告模板文件失败: ${err}`);
+            throw err;
+        }
     }
 }
