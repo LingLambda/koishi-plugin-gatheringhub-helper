@@ -1,11 +1,11 @@
-import {  Argv, Context, Schema, sleep } from 'koishi'
+import { Argv, Context, Schema, sleep } from 'koishi'
 import { DataBaseService } from './Service/DataBaseService'
-import type {OneBotBot} from 'koishi-plugin-adapter-onebot'
-import {} from 'koishi-plugin-cron'
+import type { OneBotBot } from 'koishi-plugin-adapter-onebot'
+import { } from 'koishi-plugin-cron'
 import { error } from 'console'
 import { FileService } from './Service/FileService'
 export const name = 'gatheringhub-helper'
-export const usage =`
+export const usage = `
 此插件旨在帮助怪猎群友快速发布获取群集会码  
 <small>暂仅支持onebot适配器</small>  
 ## 使用例
@@ -26,19 +26,19 @@ export const usage =`
 
 `
 export const inject = {
-  required: ['database'],
-  optional: ['cron']
+    required: ['database'],
+    optional: ['cron']
 }
 
 export interface Config {
     botId: number
     justAdmin: boolean
-    otherUser:Array<string>
-    hoursBroad:boolean
-    broadGroupId:Array<string>
+    otherUser: Array<string>
+    hoursBroad: boolean
+    broadGroupId: Array<string>
 }
 
-export const Config= Schema.intersect([
+export const Config = Schema.intersect([
     Schema.object({
         botId: Schema.number().required().description('机器人的QQ号'),
     }),
@@ -53,7 +53,7 @@ export const Config= Schema.intersect([
         Schema.object({}),
     ]),
     Schema.object({
-        hoursBroad:Schema.boolean().default(false).description('每小时自动播报一次')
+        hoursBroad: Schema.boolean().default(false).description('每小时自动播报一次')
     }),
     Schema.union([
         Schema.object({
@@ -76,7 +76,7 @@ declare module 'koishi' {
 export interface Gatheringhub {
     hub_id: number//自增主键
     hub_name: string//集会码
-    hub_no:number//排序编号
+    hub_no: number//排序编号
     add_date: Date//添加时间
     group_id: string//群号
     user_id: string//添加人id
@@ -93,18 +93,19 @@ declare module 'koishi' {
     interface Events {
         // 方法名称对应自定义事件的名称
         // 方法签名对应事件的回调函数签名
-        'gatheringhub-helper/timer-broad-event'(groupIdArray : Array<string>): void
+        'gatheringhub-helper/timer-broad-event'(groupIdArray: Array<string>): void
     }
 }
 
 //定义操作数据库对象
-const dbs=new DataBaseService();
+const dbs = new DataBaseService();
+const fileService = new FileService();
 export function apply(ctx: Context, config: Config) {
     dbs.dbInit(ctx);
-    
+
     if (ctx.cron && config.hoursBroad) {
         ctx.cron('0 * * * *', () => ctx.emit('gatheringhub-helper/timer-broad-event', config.broadGroupId));
-        
+
         ctx.on('gatheringhub-helper/timer-broad-event', async (groupIdArray: string[]) => {
             const bot = ctx.bots[`onebot:${config.botId}`] as OneBotBot<Context>;
             for (const groupId of groupIdArray) {
@@ -125,82 +126,82 @@ export function apply(ctx: Context, config: Config) {
 }
 
 
-async function jhmService(argv:any,ctx:Context,config:Config, massage: string,note:string){
+async function jhmService(argv: any, ctx: Context, config: Config, massage: string, note: string) {
     //console.log(argv.options.add+" "+argv.options.remove+" "+massage);
     //console.log(argv.session.onebot);
-    if(!argv.session.onebot){
+    if (!argv.session.onebot) {
         return "暂仅支持onebot适配器喵"
     }
     //群号
-    const groupId=argv.session.onebot.group_id;
+    const groupId = argv.session.onebot.group_id;
     //发送者id
-    const userId=argv.session.onebot.user_id.toString();
+    const userId = argv.session.onebot.user_id.toString();
     //发送者身份 owner 或 admin 或 member,如果在白名单则无视权限
-    var userRole=config.justAdmin?argv.session.onebot.sender.role:"owner"
-    if(config.otherUser.includes(userId)){
-        userRole="owner"
+    var userRole = config.justAdmin ? argv.session.onebot.sender.role : "owner"
+    if (config.otherUser.includes(userId)) {
+        userRole = "owner"
     }
-    
+
     //是否为群聊
-    const isGroup=argv.session.onebot.message_type=='group'?true:false;
+    const isGroup = argv.session.onebot.message_type == 'group' ? true : false;
 
-    const hubNo=1
+    const hubNo = 1
 
-    if(!isGroup){
+    if (!isGroup) {
         return '非群聊环境无法使用集会码助手喵';
     }
-    if(argv.options.add){
-        if(userRole=="member"){
+    if (argv.options.add) {
+        if (userRole == "member") {
             return '非管理无法操作喵';
         }
-        if(!massage||massage.length!=12){
+        if (!massage || massage.length != 12) {
             return '输入的集会码长度错误喵';
         }
-        return await jhmAdd(ctx,massage,note,userId,groupId,hubNo);
+        return await jhmAdd(ctx, massage, note, userId, groupId, hubNo);
     }
-    else if(argv.options.remove){
-        if(userRole=="member"){
+    else if (argv.options.remove) {
+        if (userRole == "member") {
             return '非管理无法操作喵';
         }
-        return await jhmRemove(ctx,massage,groupId);
+        return await jhmRemove(ctx, massage, groupId);
     }
-    else if(argv.options.select){
-        if(userRole=="member"){
+    else if (argv.options.select) {
+        if (userRole == "member") {
             return '非管理无法操作喵';
         }
-        return await jhmSelect(ctx,massage,groupId);
+        return await jhmSelect(ctx, massage, groupId);
     }
-    else if(argv.options.notice){
+    else if (argv.options.notice) {
 
         //await argv.session.onebot.sendGroupNotice(317701038,"123测试置顶",'',1,0)
-        if(await sendGroupNoticeRun(ctx,argv,groupId)){
+        if (await sendGroupNoticeRun(ctx, argv, groupId)) {
             return '同步成功喵';
         }
-        else{
+        else {
             return '同步失败喵,请联系作者查看日志';
         }
         //let a=await argv.session.onebot.getGroupNotice(317701038)
         //await argv.session.onebot.delGroupNotice(317701038,'aebbef120000000087e4cb6659380400')
         //console.log(a);
     }
-    return await jhmShowAll(ctx,groupId);
+    return await jhmShowAll(ctx, groupId);
 }
 
 /**
  * 返回本群所有集会码信息
  * @returns 集会码信息字符串
  */
-async function jhmShowAll(ctx:Context, groupId:string){
-        const gatheringhubArray=await dbs.showInfoByGroupId(ctx,groupId)
-        let gatheringhubList:string="集会码            编号    备注\n"
-        gatheringhubArray.forEach(element => {
-            gatheringhubList+=(
-                element.hub_name+"    "+
-                element.hub_no+"    "+
-                element.note+"\n"          
-            )
-        });
-        return gatheringhubList
+async function jhmShowAll(ctx: Context, groupId: string) {
+    const gatheringhubArray = await dbs.showInfoByGroupId(ctx, groupId)
+    let gatheringhubList: string = "集会码            编号    备注\n"
+    gatheringhubArray.forEach(element => {
+        gatheringhubList += (
+            element.hub_name + "    " +
+            element.hub_no + "    " +
+            element.note + "\n"
+        )
+    });
+    return gatheringhubList
 
 }
 
@@ -210,14 +211,14 @@ async function jhmShowAll(ctx:Context, groupId:string){
  * @param groupId 
  * @returns 
  */
-async function jhmSelect(ctx:Context,massage:string ,groupId:string){
-    const hubNo=parseInt(massage)
-    const gatheringhubArray=await dbs.showInfoByNo(ctx,hubNo,groupId)
-    let gatheringhubList:string="编号     添加者id        添加时间\n"
+async function jhmSelect(ctx: Context, massage: string, groupId: string) {
+    const hubNo = parseInt(massage)
+    const gatheringhubArray = await dbs.showInfoByNo(ctx, hubNo, groupId)
+    let gatheringhubList: string = "编号     添加者id        添加时间\n"
     gatheringhubArray.forEach(element => {
-        gatheringhubList+=(
-            element.hub_no+"    "+
-            element.user_id+"    "+
+        gatheringhubList += (
+            element.hub_no + "    " +
+            element.user_id + "    " +
             element.add_date.toLocaleString('zh-CN', {
                 month: 'long',   // 全称月份
                 day: 'numeric',  // 数字日期
@@ -225,20 +226,20 @@ async function jhmSelect(ctx:Context,massage:string ,groupId:string){
                 minute: 'numeric', // 分钟
                 second: 'numeric', // 秒
                 hour12: false    // 24小时制
-            })+"\n"          
+            }) + "\n"
         )
     });
     return gatheringhubList
 }
 
 
-async function jhmAdd(ctx:Context,massage:string,note:string,userId:string,groupId:string,hubNo:number){
-    if(!note){
-        note="无"
+async function jhmAdd(ctx: Context, massage: string, note: string, userId: string, groupId: string, hubNo: number) {
+    if (!note) {
+        note = "无"
     }
     // TODO:给本群添加一个集会码
-   dbs.addInfo(ctx, massage, userId,groupId, note,hubNo);
-   return "添加成功喵"
+    dbs.addInfo(ctx, massage, userId, groupId, note, hubNo);
+    return "添加成功喵"
 }
 
 async function jhmRemove(ctx: Context, massage: string, groupId: string) {
@@ -251,39 +252,42 @@ async function jhmRemove(ctx: Context, massage: string, groupId: string) {
 async function sendGroupNoticeRun(ctx: Context, argv: Argv, groupId: string) {
     /*TODO: 由于qq的神奇公告id,每次同步流程应该是:数据库查询所有bot发送的公告获取noticeId->调用接口删除对应noticeId的公告->删除数据库中的对应公告->
     调用数据库查询所有集会码信息->将信息传递给接口发送公告->保存公告信息到数据库*/
-    try{
-    let notices: GatheringhubNotice[] = await dbs.showNoticeByGroupId(ctx, groupId);
-    notices.forEach(async (notice) => {
-        try {
-            await argv.session.onebot.delGroupNotice(groupId, notice.notice_id);
-            if (!await dbs.delNoticeByNoticeId(ctx, notice.notice_id, groupId)) {
-                throw new error("the notice in database is not exist");
+    try {
+        let notices: GatheringhubNotice[] = await dbs.showNoticeByGroupId(ctx, groupId);
+        for (const notice of notices) {
+            try {
+                await argv.session.onebot.delGroupNotice(groupId, notice.notice_id);
+                argv.session.onebot.sendGroupMsgAsync(groupId, "成功删除一条bot发送的公告喵");
+                ctx.logger("hubNoticeDel").info(groupId + notice.notice_id + " delOk");
+                if (!await dbs.delNoticeByNoticeId(ctx, notice.notice_id, groupId)) {
+                    throw new Error("the notice in database is not exist");
+                }
+                ctx.logger("hubNoticeDelDB").info(groupId + " " + notice.notice_id + " delOk");
+            } catch (error) {
+                ctx.logger("hubNoticeDelDB").warn(groupId + " " + notice.notice_id + " delFail!! " + error);
             }
-            ctx.logger("hubNoticeDel").info(groupId + notice.notice_id + "delOk")
-        } catch (error) {
-            ctx.logger("hubNoticeDel").warn(groupId + " " + notice.notice_id + " delFail!! " + error)
+            await new Promise(resolve => setTimeout(resolve, 1000)); // 等待 1 秒
         }
-    });
-    let hubNameArray:Gatheringhub[] = await dbs.showInfoByGroupId(ctx, groupId);
-        await new Promise(resolve => setTimeout(resolve, 2000)); // 等待 2 秒
-        await argv.session.onebot.sendGroupNotice(groupId,await noticeFormat(hubNameArray),null,1,0);
-        let noticeInfo =await argv.session.onebot.getGroupNotice(groupId);
-        noticeInfo.forEach(async (notice)=>{
-            if(notice.sender_id== argv.session.onebot.self_id){
-                await dbs.insertNoticeByGroupId(ctx,groupId,notice.notice_id);
+        let hubNameArray: Gatheringhub[] = await dbs.showInfoByGroupId(ctx, groupId);
+        await argv.session.onebot.sendGroupNotice(groupId, await noticeFormat(hubNameArray, ctx), null, 1, 0);
+        let noticeInfo = await argv.session.onebot.getGroupNotice(groupId);
+        noticeInfo.forEach(async (notice) => {
+            if (notice.sender_id == argv.session.onebot.self_id) {
+                await dbs.insertNoticeByGroupId(ctx, groupId, notice.notice_id);
             }
         })
         return true
-    }catch(error){
+    } catch (error) {
         ctx.logger("hubNoticeSend").warn("sendNoticeFail!!" + error)
         return false
     }
 }
 
-async function noticeFormat(hubNameArray:Gatheringhub[]) {
-    let fileService=new FileService(hubNameArray);
-    let notice= fileService.replacePlaceholders();
-    if(notice==null){
+async function noticeFormat(hubNameArray: Gatheringhub[], ctx: Context) {
+    await fileService.init(hubNameArray, ctx);
+    await fileService.checkAndCopyTemplate();
+    let notice = fileService.replacePlaceholders();
+    if (notice == null) {
         throw new Error("获取公告模板发生错误");
     }
     return notice;
