@@ -2,7 +2,6 @@ import { Argv, Context, Schema, sleep } from 'koishi'
 import { DataBaseService } from './Service/DataBaseService'
 import type { OneBotBot } from 'koishi-plugin-adapter-onebot'
 import { } from 'koishi-plugin-cron'
-import { error } from 'console'
 import { FileService } from './Service/FileService'
 export const name = 'gatheringhub-helper'
 export const usage = `
@@ -132,6 +131,9 @@ async function jhmService(argv: any, ctx: Context, config: Config, massage: stri
     if (!argv.session.onebot) {
         return "暂仅支持onebot适配器喵"
     }
+    if (!(argv.session.onebot.message_type == 'group')) {
+        return '非群聊环境无法使用集会码助手喵';
+    }
     //群号
     const groupId = argv.session.onebot.group_id;
     //发送者id
@@ -141,15 +143,12 @@ async function jhmService(argv: any, ctx: Context, config: Config, massage: stri
     if (config.otherUser.includes(userId)) {
         userRole = "owner"
     }
-
-    //是否为群聊
-    const isGroup = argv.session.onebot.message_type == 'group' ? true : false;
-
+    //bot在群内的信息
+    const botInfo= await argv.session.onebot.getGroupMemberInfo(groupId,config.botId,false);
+    //集会码在数据库中的排序编号
     const hubNo = 1
+    
 
-    if (!isGroup) {
-        return '非群聊环境无法使用集会码助手喵';
-    }
     if (argv.options.add) {
         if (userRole == "member") {
             return '非管理无法操作喵';
@@ -172,17 +171,15 @@ async function jhmService(argv: any, ctx: Context, config: Config, massage: stri
         return await jhmSelect(ctx, massage, groupId);
     }
     else if (argv.options.notice) {
-
-        //await argv.session.onebot.sendGroupNotice(317701038,"123测试置顶",'',1,0)
+        if(botInfo.role=='member'){
+            return '呜呜,不是管理无法操作群公告喵';
+        }
         if (await sendGroupNoticeRun(ctx, argv, groupId)) {
             return '同步成功喵';
         }
         else {
             return '同步失败喵,请联系作者查看日志';
         }
-        //let a=await argv.session.onebot.getGroupNotice(317701038)
-        //await argv.session.onebot.delGroupNotice(317701038,'aebbef120000000087e4cb6659380400')
-        //console.log(a);
     }
     return await jhmShowAll(ctx, groupId);
 }
