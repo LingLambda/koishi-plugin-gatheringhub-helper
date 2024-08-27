@@ -1,7 +1,9 @@
-import {  Context, Schema } from 'koishi'
+import {  Argv, Context, Schema, sleep } from 'koishi'
 import { DataBaseService } from './Service/DataBaseService'
 import type {OneBotBot} from 'koishi-plugin-adapter-onebot'
 import {} from 'koishi-plugin-cron'
+import { error } from 'console'
+import { FileService } from './Service/FileService'
 export const name = 'gatheringhub-helper'
 export const usage =`
 此插件旨在帮助怪猎群友快速发布获取群集会码  
@@ -14,10 +16,13 @@ export const usage =`
   输入 'jhm -a 114514191981 冥赤龙'，添加一条新的集会码 '114514191981'，备注为'冥赤龙'。
 
 - **删除集会码**  
-  输入 'jhm -d 1' 删除编号为 1 的集会码  
+  输入 'jhm -d 1' 删除编号为 1 的集会码。  
   
 - **集会码记录**  
   输入 'jhm -s 1' 查看编号为 1 的集会码的添加记录。 
+
+- **同步集会码**
+  在编辑好群集会码信息后 输入 'jhm -n' 即可同步群集会码信息。  
 
 `
 export const inject = {
@@ -119,12 +124,7 @@ export function apply(ctx: Context, config: Config) {
         .example('jhm -r 1 将编号为1的集会码删除');
 }
 
-/*
-sendGroupNotice(group_id: id, content: string): Promise<void>;
-sendGroupNoticeAsync(group_id: id, content: string): Promise<void>;
-getGroupNotice(group_id: id): Promise<GroupNotice[]>;
-delGroupNotice(group_id: id, notice_id: id): Promise<void>;
- */
+
 async function jhmService(argv:any,ctx:Context,config:Config, massage: string,note:string){
     //console.log(argv.options.add+" "+argv.options.remove+" "+massage);
     //console.log(argv.session.onebot);
@@ -171,9 +171,14 @@ async function jhmService(argv:any,ctx:Context,config:Config, massage: string,no
         return await jhmSelect(ctx,massage,groupId);
     }
     else if(argv.options.notice){
-        /*TODO: 由于qq的神奇公告id,每次同步流程应该是:数据库查询所有bot发送的公告获取noticeId->调用接口删除对应noticeId的公告->删除数据库中的对应公告->
-        调用数据库查询所有集会码信息->将信息传递给接口发送公告->保存公告信息到数据库*/
 
+        //await argv.session.onebot.sendGroupNotice(317701038,"123测试置顶",'',1,0)
+        if(await sendGroupNoticeRun(ctx,argv,groupId)){
+            return '同步成功喵';
+        }
+        else{
+            return '同步失败喵,请联系作者查看日志';
+        }
         //let a=await argv.session.onebot.getGroupNotice(317701038)
         //await argv.session.onebot.delGroupNotice(317701038,'aebbef120000000087e4cb6659380400')
         //console.log(a);
@@ -240,4 +245,46 @@ async function jhmRemove(ctx: Context, massage: string, groupId: string) {
     const hubNo = parseInt(massage)
     return dbs.removeInfoByNo(ctx, hubNo, groupId);
 }
+/**
+ * 执行发送群公告包括前后流程
+ */
+async function sendGroupNoticeRun(ctx: Context, argv: Argv, groupId: string) {
+    /*TODO: 由于qq的神奇公告id,每次同步流程应该是:数据库查询所有bot发送的公告获取noticeId->调用接口删除对应noticeId的公告->删除数据库中的对应公告->
+    调用数据库查询所有集会码信息->将信息传递给接口发送公告->保存公告信息到数据库*/
+    try{
+    let notices: GatheringhubNotice[] = await dbs.showNoticeByGroupId(ctx, groupId);
+    notices.forEach(async (notice) => {
+        try {
+            await argv.session.onebot.delGroupNotice(groupId, notice.notice_id);
+            if (!await dbs.delNoticeByNoticeId(ctx, notice.notice_id, groupId)) {
+                throw new error("the notice in database is not exist");
+            }
+            ctx.logger("hubNoticeDel").info(groupId + notice.notice_id + "delOk")
+        } catch (error) {
+            ctx.logger("hubNoticeDel").warn(groupId + " " + notice.notice_id + " delFail!! " + error)
+        }
+    });
+    let hubNameArray:Gatheringhub[] = await dbs.showInfoByGroupId(ctx, groupId);
+        await new Promise(resolve => setTimeout(resolve, 2000)); // 等待 2 秒
+        await argv.session.onebot.sendGroupNotice(groupId,await noticeFormat(hubNameArray),null,1,0);
+        let noticeInfo =await argv.session.onebot.getGroupNotice(groupId);
+        noticeInfo.forEach(async (notice)=>{
+            if(notice.sender_id== argv.session.onebot.self_id){
+                await dbs.insertNoticeByGroupId(ctx,groupId,notice.notice_id);
+            }
+        })
+        return true
+    }catch(error){
+        ctx.logger("hubNoticeSend").warn("sendNoticeFail!!" + error)
+        return false
+    }
+}
 
+async function noticeFormat(hubNameArray:Gatheringhub[]) {
+    let fileService=new FileService(hubNameArray);
+    let notice= fileService.replacePlaceholders();
+    if(notice==null){
+        throw new Error("获取公告模板发生错误");
+    }
+    return notice;
+}

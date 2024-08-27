@@ -116,12 +116,14 @@ import { $ } from 'koishi'
    * @param ctx 
    * @param noticeId 公告id
    * @param groupId 群号
+   * @returns 如果删除成功返回true否则false
    */
   async delNoticeByNoticeId(ctx:Context,noticeId:string,groupId:string){
-    await ctx.database.remove('gatheringhub_notice',{
+    const result=await ctx.database.remove('gatheringhub_notice',{
       notice_id:noticeId,
       group_id:groupId
     })
+    return result.matched==0?false:true
   }
   /**
    * 查询某群所有由本bot发送的所有公告
