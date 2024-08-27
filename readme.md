@@ -1,7 +1,10 @@
 # koishi-plugin-gatheringhub-helper
 
 [![npm](https://img.shields.io/npm/v/koishi-plugin-gatheringhub-helper?style=flat-square)](https://www.npmjs.com/package/koishi-plugin-gatheringhub-helper)
-
+> **请注意!!：**
+> 
+> 如果您的gatheringhub-helper版本高于1.2.4仍无法使用同步集会码功能。
+> 大概率是您的onebot协议端实现不支持最新的公告功能!请排查相关原因!
 
 ## 介绍  
 `koishi-plugin-gatheringhub-helper` 是一款为怪猎玩家设计的简单的插件，此插件旨在帮助怪猎群友快速发布获取群集会码
