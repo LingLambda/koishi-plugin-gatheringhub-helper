@@ -1,4 +1,4 @@
-import { Argv, Context, Schema, sleep } from 'koishi'
+import { Argv, Context, Schema } from 'koishi'
 import { DataBaseService } from './Service/DataBaseService'
 import type { OneBotBot } from 'koishi-plugin-adapter-onebot'
 import { } from 'koishi-plugin-cron'
