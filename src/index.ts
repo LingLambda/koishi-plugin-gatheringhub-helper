@@ -114,20 +114,19 @@ export function apply(ctx: Context, config: Config) {
         });
     }
 
-    ctx.command('jhm <message:string> <note:text>', '怪物猎人集会码助手')
-        .option('add', '-a 添加新的集会码')
-        .option('remove', '-r 删除指定编号的集会码')
+    ctx.command('jhm', '怪物猎人集会码助手')
+        .option('add', '-a <hubName : string> [note:string] 添加新的集会码')
+        .option('remove', '-r <hubNo : number> 删除指定编号的集会码')
         .option('select', '-s 查询指定编号集会码的添加者和时间')
-        .option('notice', '-n 将本群集会码同步到群公告')
-        .action((argv, message, note) => jhmService(argv, ctx, config, message, note))
+        .option('notice', '-n <img : string> 将本群集会码同步到群公告')
+        .action((argv) => jhmService(argv, ctx, config))
         .example('jhm -a 114514191981 冥赤龙 将 114514191981 添加到集会码列表中设置备注为冥赤龙')
         .example('jhm -r 1 将编号为1的集会码删除');
+    //TODO :重构,分成五条命令?
 }
 
 
-async function jhmService(argv: any, ctx: Context, config: Config, massage: string, note: string) {
-    //console.log(argv.options.add+" "+argv.options.remove+" "+massage);
-    //console.log(argv.session.onebot);
+async function jhmService(argv: any, ctx: Context, config: Config) {
     if (!argv.session.onebot) {
         return "暂仅支持onebot适配器喵"
     }
@@ -140,41 +139,32 @@ async function jhmService(argv: any, ctx: Context, config: Config, massage: stri
     const userId = argv.session.onebot.user_id.toString();
     //发送者身份 owner 或 admin 或 member,如果在白名单则无视权限
     var userRole = config.justAdmin ? argv.session.onebot.sender.role : "owner"
-    if (config.otherUser.includes(userId)) {
+    if (config.justAdmin && config.otherUser.includes(userId)) {
         userRole = "owner"
     }
     //bot在群内的信息
-    const botInfo= await argv.session.onebot.getGroupMemberInfo(groupId,config.botId,false);
+    const botInfo = await argv.session.onebot.getGroupMemberInfo(groupId, config.botId, false);
     //集会码在数据库中的排序编号
     const hubNo = 1
-    
+    let o = argv.options;
 
-    if (argv.options.add) {
-        if (userRole == "member") {
-            return '非管理无法操作喵';
-        }
-        if (!massage || massage.length != 12) {
+    if (o.add != null) {
+        if (userRole == "member") return '非管理无法操作喵';
+        if (o.add.length !== 12) {
             return '输入的集会码长度错误喵';
         }
-        return await jhmAdd(ctx, massage, note, userId, groupId, hubNo);
+        return await jhmAdd(ctx, o.add, argv.args[0], userId, groupId, hubNo);
     }
-    else if (argv.options.remove) {
-        if (userRole == "member") {
-            return '非管理无法操作喵';
-        }
-        return await jhmRemove(ctx, massage, groupId);
+    else if (o.remove) {
+        if (userRole == "member") return '非管理无法操作喵';
+        return await jhmRemove(ctx, o.remove, groupId);
     }
-    else if (argv.options.select) {
-        if (userRole == "member") {
-            return '非管理无法操作喵';
-        }
-        return await jhmSelect(ctx, massage, groupId);
+    else if (o.select) {
+        return await jhmSelect(ctx, o.select, groupId);
     }
-    else if (argv.options.notice) {
-        if(botInfo.role=='member'){
-            return '呜呜,不是管理无法操作群公告喵';
-        }
-        if (await sendGroupNoticeRun(ctx, argv, groupId)) {
+    else if (o.notice) {
+        if (botInfo.role == 'member') return '我还不是管理无法操作群公告喵';
+        if (await sendGroupNoticeRun(ctx, o.notice, argv, groupId)) {
             return '同步成功喵';
         }
         else {
@@ -246,10 +236,18 @@ async function jhmRemove(ctx: Context, massage: string, groupId: string) {
 /**
  * 执行发送群公告包括前后流程
  */
-async function sendGroupNoticeRun(ctx: Context, argv: Argv, groupId: string) {
+async function sendGroupNoticeRun(ctx: Context, addMsg: string, argv: Argv, groupId: string) {
     /*TODO: 由于qq的神奇公告id,每次同步流程应该是:数据库查询所有bot发送的公告获取noticeId->调用接口删除对应noticeId的公告->删除数据库中的对应公告->
     调用数据库查询所有集会码信息->将信息传递给接口发送公告->保存公告信息到数据库*/
     try {
+        let url: string | null = null;
+        //判断是否为图片元素
+        if (/^<img/.test(addMsg)) {
+            const urlMatch = addMsg.match(/src="([^"]+)"/);
+            if (urlMatch) {
+                url = urlMatch[1] + ".jpg";
+            }
+        }
         let notices: GatheringhubNotice[] = await dbs.showNoticeByGroupId(ctx, groupId);
         for (const notice of notices) {
             try {
@@ -266,7 +264,7 @@ async function sendGroupNoticeRun(ctx: Context, argv: Argv, groupId: string) {
             await new Promise(resolve => setTimeout(resolve, 1000)); // 等待 1 秒
         }
         let hubNameArray: Gatheringhub[] = await dbs.showInfoByGroupId(ctx, groupId);
-        await argv.session.onebot.sendGroupNotice(groupId, await noticeFormat(hubNameArray, ctx), null, 1, 0);
+        await argv.session.onebot.sendGroupNotice(groupId, await noticeFormat(ctx, hubNameArray), url, 1, 0);
         let noticeInfo = await argv.session.onebot.getGroupNotice(groupId);
         noticeInfo.forEach(async (notice) => {
             if (notice.sender_id == argv.session.onebot.self_id) {
@@ -280,7 +278,7 @@ async function sendGroupNoticeRun(ctx: Context, argv: Argv, groupId: string) {
     }
 }
 
-async function noticeFormat(hubNameArray: Gatheringhub[], ctx: Context) {
+async function noticeFormat(ctx: Context, hubNameArray: Gatheringhub[]) {
     await fileService.init(hubNameArray, ctx);
     await fileService.checkAndCopyTemplate();
     let notice = fileService.replacePlaceholders();
