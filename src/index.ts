@@ -12,16 +12,18 @@ export const usage = `
   输入 'jhm' 即可查询本群的所有集会码。
 
 - **添加集会码**  
-  输入 'jhm -a 114514191981 冥赤龙'，添加一条新的集会码 '114514191981'，备注为'冥赤龙'。
+  输入 'jhm -a 114514191981 冥赤龙'，添加一条新的集会码 '114514191981'，备注为'冥赤龙'，备注可省略。
 
 - **删除集会码**  
-  输入 'jhm -d 1' 删除编号为 1 的集会码。  
+  输入 'jhm -r 1' 删除编号为 1 的集会码。  
   
 - **集会码记录**  
-  输入 'jhm -s 1' 查看编号为 1 的集会码的添加记录。 
+  输入 'jhm -s' 查看所有集会码的添加记录。 
 
 - **同步集会码**  
-  在编辑好群集会码信息后 输入 'jhm -n' 即可同步群集会码信息。  
+  在编辑好群集会码信息后 输入 'jhm -n' 即可同步群集会码信息，bot会把集会码信息同步到群公告，要在公告中附带图片时，在命令后面附带图片(如jhm -n [图片])，或回复图片时发送jhm -n。
+  
+详细可输入jhm --help
 
 `
 export const inject = {
@@ -52,7 +54,7 @@ export const Config = Schema.intersect([
         Schema.object({}),
     ]),
     Schema.object({
-        hoursBroad: Schema.boolean().default(false).description('每小时自动播报一次')
+        hoursBroad: Schema.boolean().default(false).description('每小时自动播报一次(需要corn服务)')
     }),
     Schema.union([
         Schema.object({
@@ -120,13 +122,14 @@ export function apply(ctx: Context, config: Config) {
         .option('select', '-s 查询指定编号集会码的添加者和时间')
         .option('notice', '-n <img : string> 将本群集会码同步到群公告')
         .action((argv) => jhmService(argv, ctx, config))
-        .example('jhm -a 114514191981 冥赤龙 将 114514191981 添加到集会码列表中设置备注为冥赤龙')
+        .example('jhm -a xx 冥赤龙 将 xx 添加到集会码列表中设置备注为冥赤龙')
         .example('jhm -r 1 将编号为1的集会码删除');
-    //TODO :重构,分成五条命令?
 }
 
 
 async function jhmService(argv: any, ctx: Context, config: Config) {
+    console.log(argv.options);
+    
     if (!argv.session.onebot) {
         return "暂仅支持onebot适配器喵"
     }
@@ -162,7 +165,7 @@ async function jhmService(argv: any, ctx: Context, config: Config) {
     else if (o.select) {
         return await jhmSelect(ctx, o.select, groupId);
     }
-    else if (o.notice) {
+    else if (o.notice||o.notice==='') {
         if (botInfo.role == 'member') return '我还不是管理无法操作群公告喵';
         if (await sendGroupNoticeRun(ctx, o.notice, argv, groupId)) {
             return '同步成功喵';
@@ -170,8 +173,11 @@ async function jhmService(argv: any, ctx: Context, config: Config) {
         else {
             return '同步失败喵,请联系作者查看日志';
         }
+    }else if (o.options == null&&o.remove!==0) {
+        return await jhmShowAll(ctx, groupId);
+    }else{
+        return "未知命令或缺少参数,请输入jhm -h 查看帮助";
     }
-    return await jhmShowAll(ctx, groupId);
 }
 
 /**
@@ -194,9 +200,6 @@ async function jhmShowAll(ctx: Context, groupId: string) {
 
 /**
  * 返回本群指定编号的集会码添加信息
- * @param ctx 
- * @param groupId 
- * @returns 
  */
 async function jhmSelect(ctx: Context, massage: string, groupId: string) {
     const hubNo = parseInt(massage)
@@ -224,7 +227,6 @@ async function jhmAdd(ctx: Context, massage: string, note: string, userId: strin
     if (!note) {
         note = "无"
     }
-    // TODO:给本群添加一个集会码
     dbs.addInfo(ctx, massage, userId, groupId, note, hubNo);
     return "添加成功喵"
 }

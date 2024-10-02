@@ -1,10 +1,7 @@
 # koishi-plugin-gatheringhub-helper
 
 [![npm](https://img.shields.io/npm/v/koishi-plugin-gatheringhub-helper?style=flat-square)](https://www.npmjs.com/package/koishi-plugin-gatheringhub-helper)
-> **请注意!!：**
-> 
-> 如果您的gatheringhub-helper版本高于1.2.4仍无法使用同步集会码功能。
-> 大概率是您的onebot协议端实现不支持最新的公告功能!请排查相关原因!
+
 
 ## 介绍  
 `koishi-plugin-gatheringhub-helper` 是一款为怪猎玩家设计的简单的插件，此插件旨在帮助怪猎群友快速发布获取群集会码
@@ -20,10 +17,10 @@
   输入 `jhm -d 1` 删除编号为 1 的集会码。
 
 - **集会码记录**  
-  输入 `jhm -s 1` 查看编号为 1 的集会码的添加记录。  
+  输入 `jhm -s` 查看所有集会码的添加记录。  
 
 - **同步集会码**  
-  在编辑好群集会码信息后 输入 `jhm -n` 即可同步群集会码信息。  
+  在编辑好群集会码信息后 输入 `jhm -n` 即可同步群集会码信息 可在命令后添加图片。  
 ## 功能特性  
 ✅ 数据库存储：高效地存储和管理群集会码。  
 ✅ 分群存储：根据群组进行集会码的独立存储。  
@@ -34,7 +31,7 @@
 ✅ 记录追溯：记录集会码的添加操作。  
 ✅ 定时发送：在指定群定时发送集会码信息。  
 ✅ 公告发送：同步集会码信息到公告中。  
-🚧 回复添加：通过回复消息添加集会码或同步群公告时添加图片。  
+✅ 回复添加：通过回复消息添加集会码或同步群公告时添加图片。  
 🚧 跨平台支持：即将支持更多平台适配。  
 ## 兼容性
 目前，本插件仅支持 [**onebot**](https://github.com/koishijs/koishi-plugin-adapter-onebot) 适配器。
